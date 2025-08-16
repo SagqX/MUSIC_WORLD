@@ -3,13 +3,14 @@
 
 import asyncio
 import logging
+import time
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from pytgcalls import PyTgCalls, StreamType
 from pytgcalls.types.input_stream import AudioPiped, VideoPiped
 from pytgcalls.types.input_stream.quality import HighQualityAudio, MediumQualityVideo
 import config
-from handlers import music_handlers, admin_handlers, user_handlers
+from handlers import music_handlers, user_handlers, admin_handlers
 from utils.database import Database
 from utils.queue_manager import QueueManager
 from utils.downloader import YouTubeDownloader
@@ -27,6 +28,9 @@ logger = logging.getLogger(__name__)
 
 class MusicBot:
     def __init__(self):
+        # Store start time for uptime calculation
+        self.start_time = time.time()
+        
         # Initialize Pyrogram client
         self.app = Client(
             "musicbot",
@@ -130,6 +134,26 @@ class MusicBot:
         async def speedtest_command(client, message: Message):
             await admin_handlers.speedtest_handler(client, message, self)
         
+        @self.app.on_message(filters.command(["broadcast"]) & filters.user(config.ADMINS))
+        async def broadcast_command(client, message: Message):
+            await user_handlers.broadcast_handler(client, message, self)
+        
+        @self.app.on_message(filters.command(["ban"]) & filters.user(config.ADMINS))
+        async def ban_command(client, message: Message):
+            await user_handlers.ban_user_handler(client, message, self)
+        
+        @self.app.on_message(filters.command(["unban"]) & filters.user(config.ADMINS))
+        async def unban_command(client, message: Message):
+            await user_handlers.unban_user_handler(client, message, self)
+        
+        @self.app.on_message(filters.command(["maintenance"]) & filters.user([config.OWNER_ID]))
+        async def maintenance_command(client, message: Message):
+            await user_handlers.maintenance_handler(client, message, self)
+        
+        @self.app.on_message(filters.command(["sysinfo"]) & filters.user(config.ADMINS))
+        async def sysinfo_command(client, message: Message):
+            await user_handlers.system_info_handler(client, message, self)
+        
         # User commands
         @self.app.on_message(filters.command(["start", "help"]))
         async def start_command(client, message: Message):
@@ -142,6 +166,14 @@ class MusicBot:
         @self.app.on_message(filters.command(["stats"]))
         async def stats_command(client, message: Message):
             await user_handlers.stats_handler(client, message, self)
+        
+        @self.app.on_message(filters.command(["about"]))
+        async def about_command(client, message: Message):
+            await user_handlers.about_handler(client, message, self)
+        
+        @self.app.on_message(filters.command(["language"]))
+        async def language_command(client, message: Message):
+            await user_handlers.language_handler(client, message, self)
         
         # PyTgCalls event handlers
         @self.call_py.on_stream_end()
@@ -174,18 +206,20 @@ class MusicBot:
             await self.db.connect()
             
             logger.info("Music Bot started successfully!")
-            logger.info(f"Bot username: {self.app.me.username}")
+            logger.info(f"Bot username: @{self.app.me.username}")
             
             # Send startup message to log channel if configured
             if config.LOG_GROUP_ID:
                 try:
+                    import pyrogram
+                    import pytgcalls
                     await self.app.send_message(
                         config.LOG_GROUP_ID,
-                        "🎵 **Music Bot Started Successfully!**\n\n"
+                        f"🎵 **Music Bot Started Successfully!**\n\n"
                         f"**Bot Username:** @{self.app.me.username}\n"
                         f"**Pyrogram Version:** {pyrogram.__version__}\n"
                         f"**PyTgCalls Version:** {pytgcalls.__version__}\n"
-                        "**Status:** Online ✅"
+                        f"**Status:** Online ✅"
                     )
                 except Exception as e:
                     logger.error(f"Failed to send startup message: {e}")
