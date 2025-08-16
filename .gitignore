@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.env
+.venv/
+venv/
+.env.local
+.cache/
+
+# App runtime
+downloads/
+cache/
+logs/
+musicbot.log
+session*
+musicbot_session*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tools
+.idea/
+.vscode/
